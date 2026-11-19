@@ -1,0 +1,1924 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스마트 교구·기자재 허브 | 실시간 교시별 대여</title>
+  <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-base: #eef2f6;
+      --glass-bg: rgba(255, 255, 255, 0.82);
+      --glass-strong: rgba(255, 255, 255, 0.94);
+      --glass-border: rgba(255, 255, 255, 0.75);
+      --border-subtle: rgba(148, 163, 184, 0.24);
+      --text-main: #0f172a;
+      --text-sub: #475569;
+      --text-muted: #94a3b8;
+      --accent: #0d9488;
+      --accent-dark: #0f766e;
+      --accent-soft: #ccfbf1;
+      --indigo: #4f46e5;
+      --indigo-soft: #e0e7ff;
+      --amber: #d97706;
+      --amber-soft: #fef3c7;
+      --danger: #e11d48;
+      --danger-soft: #ffe4e6;
+      --radius-xl: 22px;
+      --radius-lg: 16px;
+      --radius-md: 12px;
+      --shadow-glass: 0 10px 30px -5px rgba(15, 23, 42, 0.06), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      color: var(--text-main);
+      background-color: var(--bg-base);
+      background-image:
+        radial-gradient(at 10% 8%, rgba(20, 184, 166, 0.14) 0px, transparent 42%),
+        radial-gradient(at 88% 12%, rgba(99, 102, 241, 0.12) 0px, transparent 45%),
+        radial-gradient(at 50% 92%, rgba(16, 185, 129, 0.10) 0px, transparent 50%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      line-height: 1.5;
+      padding-bottom: 56px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* 상단 플로팅 글래스 네비게이션 */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.78);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .topbar-inner {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #0d9488 0%, #2563eb 100%);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      box-shadow: 0 6px 14px rgba(13, 148, 136, 0.25);
+    }
+
+    .brand-title {
+      font-size: 1.18rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mode-switch {
+      display: inline-flex;
+      background: rgba(226, 232, 240, 0.7);
+      padding: 4px;
+      border-radius: 14px;
+      gap: 4px;
+    }
+
+    .mode-btn {
+      border: none;
+      background: transparent;
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .mode-btn.active {
+      background: #ffffff;
+      color: var(--accent-dark);
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+    }
+
+    .status-dot.ok {
+      background: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+    }
+
+    /* 메인 레이아웃 */
+    .wrapper {
+      max-width: 1160px;
+      margin: 22px auto 0;
+      padding: 0 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* 오류 알림 배너 */
+    .alert-box {
+      display: none;
+      background: #fff1f2;
+      border: 1px solid #fecdd3;
+      color: #9f1239;
+      padding: 14px 18px;
+      border-radius: var(--radius-lg);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    /* 상단 3단 Bento 컨트롤 보드 */
+    .bento-top {
+      display: grid;
+      grid-template-columns: 1.2fr 1.1fr 1.1fr;
+      gap: 16px;
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      box-shadow: var(--shadow-glass);
+    }
+
+    .bento-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    /* 날짜 스위처 카드 */
+    .date-switcher {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      padding: 6px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border: none;
+      border-radius: 10px;
+      background: #f1f5f9;
+      color: var(--text-main);
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .date-display-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .date-big {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .date-tag {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--accent-dark);
+    }
+
+    #boardDateInput {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .quick-day-chips {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .mini-chip {
+      flex: 1;
+      border: 1px solid var(--border-subtle);
+      background: rgba(255, 255, 255, 0.75);
+      border-radius: 9px;
+      padding: 5px 8px;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .mini-chip:hover {
+      background: #ffffff;
+      color: var(--accent-dark);
+      border-color: var(--accent);
+    }
+
+    /* 오늘의 가동 현황 카드 */
+    .live-metrics {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .metric-num {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: var(--accent-dark);
+      letter-spacing: -0.03em;
+    }
+
+    .metric-sub {
+      font-size: 0.84rem;
+      color: var(--text-sub);
+      font-weight: 600;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981 0%, #0d9488 100%);
+      border-radius: 999px;
+      transition: width 0.35s ease;
+    }
+
+    /* 내 대여함 (Quick My Gear) 카드 */
+    .my-gear-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .my-gear-input {
+      flex: 1;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      background: #ffffff;
+      font-family: inherit;
+      font-size: 0.86rem;
+    }
+
+    .my-gear-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .my-gear-summary {
+      margin-top: 10px;
+      font-size: 0.82rem;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .link-btn {
+      border: none;
+      background: none;
+      color: var(--indigo);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    /* 필터 & 검색 툴바 */
+    .filter-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .cat-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cat-pill {
+      border: 1px solid var(--border-subtle);
+      background: var(--glass-bg);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--text-sub);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .cat-pill:hover {
+      background: #ffffff;
+    }
+
+    .cat-pill.active {
+      background: var(--text-main);
+      color: #ffffff;
+      border-color: var(--text-main);
+    }
+
+    .search-box {
+      position: relative;
+      min-width: 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      height: 38px;
+      padding: 0 14px 0 36px;
+      border-radius: 999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--glass-strong);
+      font-family: inherit;
+      font-size: 0.86rem;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* 기자재 Bento 카드 그리드 */
+    .gear-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .gear-card {
+      background: var(--glass-strong);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 20px;
+      box-shadow: var(--shadow-glass);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .gear-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 32px -6px rgba(15, 23, 42, 0.1);
+    }
+
+    .gear-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .gear-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .gear-emoji {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.45rem;
+      flex-shrink: 0;
+    }
+
+    .gear-name {
+      font-size: 1.08rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+    }
+
+    .gear-meta {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+      margin-top: 2px;
+    }
+
+    .avail-badge {
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .avail-badge.free {
+      background: var(--accent-soft);
+      color: var(--accent-dark);
+    }
+
+    .avail-badge.partial {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .avail-badge.full {
+      background: var(--danger-soft);
+      color: var(--danger);
+    }
+
+    /* 1~6교시 인터랙티브 슬롯 그리드 */
+    .period-slots {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .slot-btn {
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 9px 10px;
+      text-align: left;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-height: 58px;
+    }
+
+    .slot-btn.open {
+      background: #f8fafc;
+      border-style: dashed;
+      border-color: #cbd5e1;
+    }
+
+    .slot-btn.open:hover {
+      background: var(--accent-soft);
+      border-style: solid;
+      border-color: var(--accent);
+    }
+
+    .slot-btn.booked {
+      background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+      border-color: #c7d2fe;
+    }
+
+    .slot-btn.booked.mine {
+      background: linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%);
+      border-color: #5eead4;
+    }
+
+    .slot-p {
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--text-sub);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .slot-who {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .slot-btn.open .slot-who {
+      color: var(--accent-dark);
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    /* 카드 하단 액션 */
+    .gear-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .btn-grad {
+      border: none;
+      border-radius: 11px;
+      padding: 9px 16px;
+      background: linear-gradient(135deg, #0d9488 0%, #059669 100%);
+      color: #ffffff;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.22);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .btn-grad:hover {
+      opacity: 0.92;
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      border: 1px solid var(--border-subtle);
+      background: #ffffff;
+      color: var(--text-sub);
+      border-radius: 11px;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-ghost:hover {
+      background: #f8fafc;
+      color: var(--text-main);
+    }
+
+    /* 카드 내 접이식 주간 미니 시간표 */
+    .mini-week-drawer {
+      display: none;
+      background: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 10px;
+      overflow-x: auto;
+    }
+
+    .mini-week-drawer.open {
+      display: block;
+    }
+
+    .mini-week-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.76rem;
+      text-align: center;
+    }
+
+    .mini-week-table th, .mini-week-table td {
+      border: 1px solid #e2e8f0;
+      padding: 5px 4px;
+    }
+
+    .mini-week-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+    }
+
+    .mini-week-table td.has-booking {
+      background: #e0e7ff;
+      color: #3730a3;
+      font-weight: 700;
+    }
+
+    .mini-week-table td.can-book {
+      color: #94a3b8;
+      cursor: pointer;
+    }
+
+    .mini-week-table td.can-book:hover {
+      background: #ccfbf1;
+      color: #0f766e;
+      font-weight: 700;
+    }
+
+    /* 모달 공통 */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.48);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 1000;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #ffffff;
+      border-radius: 22px;
+      max-width: 440px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+      animation: popUp 0.18s ease-out;
+    }
+
+    @keyframes popUp {
+      from { opacity: 0; transform: scale(0.96) translateY(8px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .close-x {
+      border: none;
+      background: #f1f5f9;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .modal-sub-banner {
+      background: #f0fdfa;
+      border: 1px solid #99f6e4;
+      color: #0f766e;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    /* 연속 교시(블록타임) 선택 칩 */
+    .period-picker {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .p-chip {
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 8px 0;
+      font-family: inherit;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .p-chip.selected {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      box-shadow: 0 3px 8px rgba(13, 148, 136, 0.25);
+    }
+
+    .p-chip:disabled {
+      background: #f1f5f9;
+      color: #cbd5e1;
+      border-color: #e2e8f0;
+      cursor: not-allowed;
+      text-decoration: line-through;
+    }
+
+    .modal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field.full {
+      grid-column: span 2;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+
+    .field input, .field select {
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
+      font-family: inherit;
+      font-size: 0.92rem;
+    }
+
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    /* 통계 탭 */
+    .stats-grid-kpi {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .charts-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      height: 300px;
+    }
+
+    /* 내 대여 목록 모달 리스트 */
+    .my-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .btn-danger-sm {
+      border: 1px solid #fecdd3;
+      background: #fff1f2;
+      color: var(--danger);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* 토스트 */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #0f172a;
+      color: #ffffff;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.22s ease;
+      z-index: 1200;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.25);
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #toast.ok { background: #0f766e; }
+    #toast.err { background: #e11d48; }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 900px) {
+      .bento-top { grid-template-columns: 1fr; }
+      .gear-grid { grid-template-columns: 1fr; }
+      .stats-grid-kpi { grid-template-columns: 1fr; }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 상단 글래스 바 -->
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div>
+          <div class="brand-title">스마트 교구·기자재 허브</div>
+          <div class="brand-sub">원탭 교시별 실시간 대여 및 블록타임 예약</div>
+        </div>
+      </div>
+
+      <div class="nav-right">
+        <div class="mode-switch">
+          <button type="button" class="mode-btn active" data-view="boardView">실시간 현황보드</button>
+          <button type="button" class="mode-btn" data-view="statsView">이용 분석 리포트</button>
+        </div>
+        <div class="status-pill">
+          <span class="status-dot" id="connDot"></span>
+          <span id="connText">연결 중...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 뷰 1: 실시간 현황보드 -->
+  <main id="boardView" class="wrapper">
+    <div id="alertBox" class="alert-box"></div>
+
+    <!-- 상단 3단 Bento 요약/컨트롤 보드 -->
+    <section class="bento-top">
+      <!-- 1) 날짜 선택 보드 -->
+      <div class="glass-card">
+        <div class="bento-label">
+          <span>📅 대여 기준 날짜</span>
+          <span id="weekLabelMini" style="color: var(--indigo);">이번 주</span>
+        </div>
+        <div class="date-switcher">
+          <button type="button" class="icon-btn" id="prevDayBtn" title="이전 날짜">◀</button>
+          <div class="date-display-wrap" title="클릭해서 달력에서 날짜 선택">
+            <span class="date-big" id="selectedDateText">-</span>
+            <span class="date-tag" id="selectedDateSub">달력 선택 가능</span>
+            <input type="date" id="boardDateInput" />
+          </div>
+          <button type="button" class="icon-btn" id="nextDayBtn" title="다음 날짜">▶</button>
+        </div>
+        <div class="quick-day-chips">
+          <button type="button" class="mini-chip" id="todayJumpBtn">오늘</button>
+          <button type="button" class="mini-chip" id="tomorrowJumpBtn">내일</button>
+          <button type="button" class="mini-chip" id="nextMonJumpBtn">다음 주 월요일</button>
+        </div>
+      </div>
+
+      <!-- 2) 당일 실시간 가동 현황 -->
+      <div class="glass-card">
+        <div class="bento-label">
+          <span>📊 선택일 교구 가동률</span>
+          <span id="availSlotRatio">0 / 0교시</span>
+        </div>
+        <div class="live-metrics">
+          <span class="metric-num" id="freeGearCount">-</span>
+          <span class="metric-sub" id="freeGearDesc">개 기자재 여유 있음</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="dayUsageBar"></div>
+        </div>
+      </div>
+
+      <!-- 3) 내 대여함 (Quick My Gear) -->
+      <div class="glass-card">
+        <div class="bento-label">
+          <span>🙋 내 예약 빠른 조회·반납</span>
+          <button type="button" class="link-btn" id="openMyRentalsBtn">전체 내역</button>
+        </div>
+        <div class="my-gear-row">
+          <input type="text" id="myTeacherName" class="my-gear-input" placeholder="선생님 성함 입력 (예: 김민지)" maxlength="20" />
+        </div>
+        <div class="my-gear-summary">
+          <span id="myGearCountText">성함을 입력하면 내 예약이 초록색으로 강조됩니다.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 카테고리 칩 & 검색바 -->
+    <section class="filter-strip">
+      <div class="cat-pills" id="categoryPills">
+        <button type="button" class="cat-pill active" data-cat="ALL">전체 기자재</button>
+      </div>
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="gearSearchInput" placeholder="기자재명, 보관 장소, 대여 교사 검색" />
+      </div>
+    </section>
+
+    <!-- 기자재별 인터랙티브 Bento 카드 그리드 -->
+    <section id="gearGrid" class="gear-grid">
+      <div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-sub);">
+        기자재 및 대여 현황을 불러오고 있습니다...
+      </div>
+    </section>
+  </main>
+
+  <!-- 뷰 2: 이용 분석 리포트 -->
+  <section id="statsView" class="wrapper hidden">
+    <div class="glass-card" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h2 style="font-size: 1.15rem; font-weight: 800;">📈 공유 기자재·체육 교구 활용 리포트</h2>
+        <p id="statsRangeInfo" style="font-size: 0.84rem; color: var(--text-sub); margin-top: 2px;">기간별 이용 통계를 분석합니다.</p>
+      </div>
+      <div class="mode-switch">
+        <button type="button" class="mode-btn active" data-range="week">이번 주</button>
+        <button type="button" class="mode-btn" data-range="month">이번 달</button>
+        <button type="button" class="mode-btn" data-range="all">전체 누적</button>
+      </div>
+    </div>
+
+    <div class="stats-grid-kpi">
+      <div class="glass-card">
+        <div class="bento-label">총 대여 교시 수</div>
+        <div class="metric-num" id="statTotalRentals">0건</div>
+        <div class="metric-sub" id="statPeriodText" style="margin-top: 4px;">-</div>
+      </div>
+      <div class="glass-card">
+        <div class="bento-label">최다 활용 기자재</div>
+        <div class="metric-num" id="statBestItem" style="font-size: 1.35rem;">-</div>
+        <div class="metric-sub" id="statBestItemSub" style="margin-top: 4px;">-</div>
+      </div>
+      <div class="glass-card">
+        <div class="bento-label">피크 타임 (요일·교시)</div>
+        <div class="metric-num" id="statPeakTime" style="font-size: 1.35rem;">-</div>
+        <div class="metric-sub" id="statPeakTimeSub" style="margin-top: 4px;">-</div>
+      </div>
+    </div>
+
+    <div class="charts-row">
+      <div class="glass-card">
+        <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 4px;">기자재별 가동률 (%)</h3>
+        <p style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 12px;">기간 내 평일(1~6교시) 대비 실제 대여 비율</p>
+        <div class="chart-wrap">
+          <canvas id="chartItems"></canvas>
+        </div>
+      </div>
+      <div class="glass-card">
+        <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 4px;">요일·교시별 집중도</h3>
+        <p style="font-size: 0.8rem; color: var(--text-sub); margin-bottom: 12px;">어느 요일, 몇 교시에 대여가 몰리는지 보여줍니다.</p>
+        <div class="chart-wrap">
+          <canvas id="chartSlots"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 원탭 대여 모달 (블록타임 다중 교시 지원) -->
+  <div id="rentModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" id="rentModalTitle">기자재 대여하기</h3>
+        <button type="button" class="close-x" id="closeRentModal">✕</button>
+      </div>
+      <div class="modal-sub-banner" id="rentModalBanner">-</div>
+
+      <form id="quickRentForm">
+        <div style="font-size: 0.82rem; font-weight: 700; color: var(--text-sub); margin-bottom: 6px;">
+          대여할 교시 선택 <span style="font-weight: 500; color: var(--accent-dark);">(여러 교시 연속 선택 가능)</span>
+        </div>
+        <div class="period-picker" id="modalPeriodPicker"></div>
+
+        <div class="modal-grid">
+          <div class="field">
+            <label for="mTeacher">교사 이름 *</label>
+            <input type="text" id="mTeacher" placeholder="예: 김민지" maxlength="20" required />
+          </div>
+          <div class="field">
+            <label for="mPin">취소용 PIN (숫자 4자리) *</label>
+            <input type="password" id="mPin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="1234" required />
+          </div>
+          <div class="field">
+            <label for="mGrade">학년 *</label>
+            <select id="mGrade" required>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+              <option value="4">4학년</option>
+              <option value="5">5학년</option>
+              <option value="6">6학년</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="mClassNo">반 (선택)</label>
+            <input type="number" id="mClassNo" placeholder="예: 2" min="1" max="30" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-ghost" id="cancelRentBtn">닫기</button>
+          <button type="submit" class="btn-grad" id="confirmRentBtn">선택 교시 대여 확정</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 반납(취소) PIN 확인 모달 -->
+  <div id="returnModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width: 380px;">
+      <div class="modal-header">
+        <h3 class="modal-title">대여 반납(취소)</h3>
+        <button type="button" class="close-x" id="closeReturnModal">✕</button>
+      </div>
+      <p id="returnModalDesc" style="font-size: 0.88rem; color: var(--text-sub); margin-bottom: 14px;"></p>
+      <div class="field">
+        <label for="returnPinInput">등록 시 설정한 PIN 4자리</label>
+        <input type="password" id="returnPinInput" inputmode="numeric" maxlength="4" placeholder="••••" style="text-align: center; font-size: 1.25rem; letter-spacing: 0.3em; font-weight: 800;" />
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" id="cancelReturnBtn">닫기</button>
+        <button type="button" class="btn-grad" id="doReturnBtn" style="background: var(--danger);">반납 확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 내 대여 전체 목록 모달 -->
+  <div id="myListModal" class="modal-overlay" role="dialog" aria-modal="true">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 class="modal-title" id="myListTitle">예약 내역 조회 및 반납</h3>
+        <button type="button" class="close-x" id="closeMyListModal">✕</button>
+      </div>
+      <div id="myListBody" style="max-height: 360px; overflow-y: auto;"></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    // =========================================================================
+    // ★ Supabase 프로젝트 연결 정보 (자동 입력 완료) ★
+    // =========================================================================
+    const SUPABASE_URL = 'https://bptjvpcymmmnxdlxhasi.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_GzAR015JSh0H2yX-rQYy_g_x0Uhbgdn';
+
+    const PERIODS = [1, 2, 3, 4, 5, 6];
+    const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+    const WEEKDAYS = ['월', '화', '수', '목', '금'];
+
+    let db = null;
+    let items = [];
+    let rentals = [];
+    let selectedDate = toISO(new Date());
+    let selectedCategory = 'ALL';
+    let statsRange = 'week';
+
+    // 모달 상태
+    let activeRentItem = null;
+    let selectedModalPeriods = new Set();
+    let targetReturnRental = null;
+
+    let chartItemsObj = null;
+    let chartSlotsObj = null;
+
+    // =========================================================================
+    // 유틸리티 함수
+    // =========================================================================
+    function toISO(d) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    function fromISO(str) {
+      const [y, m, d] = str.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function addDays(d, n) {
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+    }
+
+    function getMonday(d) {
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      return addDays(d, diff);
+    }
+
+    function formatKoDate(iso) {
+      const d = fromISO(iso);
+      return `${d.getMonth() + 1}월 ${d.getDate()}일 (${DAY_KO[d.getDay()]})`;
+    }
+
+    function getCategoryEmoji(cat) {
+      if (!cat) return '📦';
+      if (cat.includes('체육')) return '⚽';
+      if (cat.includes('방송') || cat.includes('영상')) return '📽️';
+      if (cat.includes('디지털') || cat.includes('정보')) return '💻';
+      if (cat.includes('과학')) return '🔬';
+      if (cat.includes('음악') || cat.includes('미술')) return '🎨';
+      return '🧰';
+    }
+
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    let toastT = null;
+    function toast(msg, type = '') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'show ' + type;
+      clearTimeout(toastT);
+      toastT = setTimeout(() => { el.className = ''; }, 3000);
+    }
+
+    // =========================================================================
+    // 초기화 & 데이터 로드
+    // =========================================================================
+    async function init() {
+      const savedTeacher = localStorage.getItem('gear_teacher_name') || '';
+      const savedGrade = localStorage.getItem('gear_grade') || '1';
+      const savedClass = localStorage.getItem('gear_class') || '';
+
+      document.getElementById('myTeacherName').value = savedTeacher;
+      document.getElementById('mTeacher').value = savedTeacher;
+      document.getElementById('mGrade').value = savedGrade;
+      document.getElementById('mClassNo').value = savedClass;
+
+      bindEvents();
+      updateDateHeader();
+
+      try {
+        db = window.supabase.createClient(SUPABASE_URL.trim(), SUPABASE_KEY.trim());
+        await fetchAll();
+        document.getElementById('connDot').classList.add('ok');
+        document.getElementById('connText').textContent = '실시간 동기화됨';
+      } catch (err) {
+        console.error(err);
+        document.getElementById('connText').textContent = 'DB 연결 오류';
+        const box = document.getElementById('alertBox');
+        box.innerHTML = `<strong>⚠️ 데이터베이스 연결 오류:</strong> ${esc(err.message || '알 수 없는 오류')}`;
+        box.style.display = 'block';
+      }
+    }
+
+    async function fetchAll() {
+      const [resItems, resRentals] = await Promise.all([
+        db.from('items').select('*').order('id', { ascending: true }),
+        db.from('rentals').select('*').order('rent_date', { ascending: true }).order('period', { ascending: true })
+      ]);
+      if (resItems.error) throw resItems.error;
+      if (resRentals.error) throw resRentals.error;
+
+      items = resItems.data || [];
+      rentals = resRentals.data || [];
+
+      renderCategoryPills();
+      renderBoard();
+      if (!document.getElementById('statsView').classList.contains('hidden')) {
+        renderStats();
+      }
+    }
+
+    // =========================================================================
+    // 날짜 & 상단 브리핑 업데이트
+    // =========================================================================
+    function updateDateHeader() {
+      document.getElementById('boardDateInput').value = selectedDate;
+      document.getElementById('selectedDateText').textContent = formatKoDate(selectedDate);
+
+      const todayISO = toISO(new Date());
+      const tomorrowISO = toISO(addDays(new Date(), 1));
+      const tagEl = document.getElementById('selectedDateSub');
+      if (selectedDate === todayISO) tagEl.textContent = '오늘 · 클릭하여 날짜 변경';
+      else if (selectedDate === tomorrowISO) tagEl.textContent = '내일 · 클릭하여 날짜 변경';
+      else tagEl.textContent = `${selectedDate} · 클릭하여 변경`;
+
+      const mon = getMonday(fromISO(selectedDate));
+      const fri = addDays(mon, 4);
+      document.getElementById('weekLabelMini').textContent =
+        `${mon.getMonth() + 1}/${mon.getDate()}~${fri.getMonth() + 1}/${fri.getDate()} 주간`;
+    }
+
+    function renderCategoryPills() {
+      const wrap = document.getElementById('categoryPills');
+      const categories = ['ALL', ...new Set(items.map((i) => i.category))];
+      wrap.innerHTML = '';
+      categories.forEach((cat) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'cat-pill' + (selectedCategory === cat ? ' active' : '');
+        btn.textContent = cat === 'ALL' ? `전체 (${items.length})` : `${getCategoryEmoji(cat)} ${cat}`;
+        btn.addEventListener('click', () => {
+          selectedCategory = cat;
+          renderCategoryPills();
+          renderBoard();
+        });
+        wrap.appendChild(btn);
+      });
+    }
+
+    // =========================================================================
+    // 메인 Bento 카드 그리드 렌더링
+    // =========================================================================
+    function renderBoard() {
+      const dayRentals = rentals.filter((r) => r.rent_date === selectedDate);
+      const totalSlots = items.length * 6;
+      const usedSlots = dayRentals.length;
+      const pct = totalSlots > 0 ? Math.round((usedSlots / totalSlots) * 100) : 0;
+
+      document.getElementById('availSlotRatio').textContent = `${usedSlots} / ${totalSlots}교시 사용 중 (${pct}%)`;
+      document.getElementById('dayUsageBar').style.width = `${pct}%`;
+
+      // 현재 날짜에 1교시라도 빈 시간이 있는 기자재 수
+      const freeItemsCount = items.filter((item) => {
+        const cnt = dayRentals.filter((r) => r.item_id === item.id).length;
+        return cnt < 6;
+      }).length;
+      document.getElementById('freeGearCount').textContent = `${freeItemsCount}종`;
+      document.getElementById('freeGearDesc').textContent = `/ 전체 ${items.length}종 대여 가능`;
+
+      // 내 예약 카운트
+      const myName = document.getElementById('myTeacherName').value.trim();
+      const todayISO = toISO(new Date());
+      if (myName) {
+        const myUpcoming = rentals.filter((r) => r.teacher_name.includes(myName) && r.rent_date >= todayISO);
+        document.getElementById('myGearCountText').innerHTML =
+          `<strong>${esc(myName)}</strong> 선생님 예정 예약: <strong style="color: var(--accent-dark);">${myUpcoming.length}건</strong>`;
+      } else {
+        document.getElementById('myGearCountText').textContent = '성함을 입력하면 내 예약이 초록색으로 강조됩니다.';
+      }
+
+      // 필터링
+      const q = document.getElementById('gearSearchInput').value.trim().toLowerCase();
+      const filteredItems = items.filter((item) => {
+        if (selectedCategory !== 'ALL' && item.category !== selectedCategory) return false;
+        if (!q) return true;
+        const itemBookings = dayRentals.filter((r) => r.item_id === item.id);
+        const teacherMatch = itemBookings.some((b) => b.teacher_name.toLowerCase().includes(q));
+        return (
+          item.name.toLowerCase().includes(q) ||
+          (item.location && item.location.toLowerCase().includes(q)) ||
+          item.category.toLowerCase().includes(q) ||
+          teacherMatch
+        );
+      });
+
+      const grid = document.getElementById('gearGrid');
+      if (filteredItems.length === 0) {
+        grid.innerHTML = `<div class="glass-card" style="grid-column: 1 / -1; text-align: center; padding: 36px; color: var(--text-sub);">검색 조건에 맞는 기자재가 없습니다.</div>`;
+        return;
+      }
+
+      grid.innerHTML = '';
+      const mon = getMonday(fromISO(selectedDate));
+      const weekDates = Array.from({ length: 5 }, (_, i) => toISO(addDays(mon, i)));
+
+      filteredItems.forEach((item) => {
+        const itemDayRentals = dayRentals.filter((r) => r.item_id === item.id);
+        const bookedCount = itemDayRentals.length;
+
+        let statusClass = 'free';
+        let statusLabel = '🟢 전 교시 여유';
+        if (bookedCount === 6) {
+          statusClass = 'full';
+          statusLabel = '🔴 마감됨';
+        } else if (bookedCount > 0) {
+          statusClass = 'partial';
+          statusLabel = `🟡 ${6 - bookedCount}개 교시 가능`;
+        }
+
+        const card = document.createElement('article');
+        card.className = 'gear-card';
+
+        // 카드 상단
+        card.innerHTML = `
+          <div class="gear-head">
+            <div class="gear-title-wrap">
+              <div class="gear-emoji">${getCategoryEmoji(item.category)}</div>
+              <div>
+                <div class="gear-name">${esc(item.name)}</div>
+                <div class="gear-meta">${esc(item.category)} · 📍 ${esc(item.location || '위치 미지정')}</div>
+              </div>
+            </div>
+            <span class="avail-badge ${statusClass}">${statusLabel}</span>
+          </div>
+        `;
+
+        // 1~6교시 원탭 타임라인 그리드
+        const slotsWrap = document.createElement('div');
+        slotsWrap.className = 'period-slots';
+
+        PERIODS.forEach((p) => {
+          const booking = itemDayRentals.find((r) => r.period === p);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+
+          if (booking) {
+            const isMine = myName && booking.teacher_name.includes(myName);
+            btn.className = 'slot-btn booked' + (isMine ? ' mine' : '');
+            const cls = booking.class_no ? `${booking.grade}-${booking.class_no}` : `${booking.grade}학년`;
+            btn.innerHTML = `
+              <span class="slot-p"><span>${p}교시</span><span>${isMine ? '내 예약' : '사용중'}</span></span>
+              <span class="slot-who">${esc(booking.teacher_name)} (${cls})</span>
+            `;
+            btn.title = '클릭하여 반납(취소)하기';
+            btn.addEventListener('click', () => openReturnModal(booking, item.name));
+          } else {
+            btn.className = 'slot-btn open';
+            btn.innerHTML = `
+              <span class="slot-p"><span>${p}교시</span><span>+</span></span>
+              <span class="slot-who">대여 가능</span>
+            `;
+            btn.title = `${p}교시 바로 대여하기`;
+            btn.addEventListener('click', () => openRentModal(item, [p]));
+          }
+
+          slotsWrap.appendChild(btn);
+        });
+        card.appendChild(slotsWrap);
+
+        // 카드 내 주간 미니 시간표 드로어
+        const drawer = document.createElement('div');
+        drawer.className = 'mini-week-drawer';
+        let tableHtml = `<table class="mini-week-table"><thead><tr><th>교시</th>`;
+        weekDates.forEach((wIso, idx) => {
+          const d = fromISO(wIso);
+          tableHtml += `<th>${WEEKDAYS[idx]}(${d.getDate()})</th>`;
+        });
+        tableHtml += `</tr></thead><tbody>`;
+        PERIODS.forEach((p) => {
+          tableHtml += `<tr><th>${p}</th>`;
+          weekDates.forEach((wIso) => {
+            const found = rentals.find((r) => r.item_id === item.id && r.rent_date === wIso && r.period === p);
+            if (found) {
+              tableHtml += `<td class="has-booking">${esc(found.teacher_name)}</td>`;
+            } else {
+              tableHtml += `<td class="can-book" data-date="${wIso}" data-period="${p}">+</td>`;
+            }
+          });
+          tableHtml += `</tr>`;
+        });
+        tableHtml += `</tbody></table>`;
+        drawer.innerHTML = tableHtml;
+
+        drawer.querySelectorAll('.can-book').forEach((cell) => {
+          cell.addEventListener('click', () => {
+            selectedDate = cell.dataset.date;
+            updateDateHeader();
+            renderBoard();
+            openRentModal(item, [Number(cell.dataset.period)]);
+          });
+        });
+
+        // 카드 하단 버튼 영역
+        const footer = document.createElement('div');
+        footer.className = 'gear-footer';
+
+        const weekToggleBtn = document.createElement('button');
+        weekToggleBtn.type = 'button';
+        weekToggleBtn.className = 'btn-ghost';
+        weekToggleBtn.textContent = '📅 주간 현황 펼치기';
+        weekToggleBtn.addEventListener('click', () => {
+          const isOpen = drawer.classList.toggle('open');
+          weekToggleBtn.textContent = isOpen ? '▲ 주간 현황 접기' : '📅 주간 현황 펼치기';
+        });
+
+        const quickRentBtn = document.createElement('button');
+        quickRentBtn.type = 'button';
+        quickRentBtn.className = 'btn-grad';
+        quickRentBtn.textContent = bookedCount === 6 ? '다른 날짜 대여' : '⚡ 원탭 대여';
+        quickRentBtn.addEventListener('click', () => {
+          const firstOpen = PERIODS.find((p) => !itemDayRentals.some((r) => r.period === p));
+          openRentModal(item, firstOpen ? [firstOpen] : []);
+        });
+
+        footer.appendChild(weekToggleBtn);
+        footer.appendChild(quickRentBtn);
+
+        card.appendChild(footer);
+        card.appendChild(drawer);
+        grid.appendChild(card);
+      });
+    }
+
+    // =========================================================================
+    // 원탭 대여 모달 (다중 교시 선택 가능)
+    // =========================================================================
+    function openRentModal(item, initialPeriods = []) {
+      activeRentItem = item;
+      selectedModalPeriods = new Set(initialPeriods);
+
+      document.getElementById('rentModalTitle').textContent = `${getCategoryEmoji(item.category)} ${item.name}`;
+      document.getElementById('rentModalBanner').textContent =
+        `📅 ${formatKoDate(selectedDate)} · 보관 위치: ${item.location || '미지정'}`;
+
+      const dayBooked = new Set(
+        rentals.filter((r) => r.item_id === item.id && r.rent_date === selectedDate).map((r) => r.period)
+      );
+
+      const picker = document.getElementById('modalPeriodPicker');
+      picker.innerHTML = '';
+      PERIODS.forEach((p) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'p-chip' + (selectedModalPeriods.has(p) ? ' selected' : '');
+        btn.textContent = `${p}교시`;
+        if (dayBooked.has(p)) {
+          btn.disabled = true;
+          btn.title = '이미 예약된 교시입니다';
+        } else {
+          btn.addEventListener('click', () => {
+            if (selectedModalPeriods.has(p)) selectedModalPeriods.delete(p);
+            else selectedModalPeriods.add(p);
+            btn.classList.toggle('selected', selectedModalPeriods.has(p));
+          });
+        }
+        picker.appendChild(btn);
+      });
+
+      document.getElementById('mPin').value = '';
+      document.getElementById('rentModal').classList.add('open');
+      setTimeout(() => document.getElementById('mTeacher').focus(), 50);
+    }
+
+    function closeRentModal() {
+      document.getElementById('rentModal').classList.remove('open');
+      activeRentItem = null;
+    }
+
+    async function submitQuickRent(e) {
+      e.preventDefault();
+      if (!activeRentItem || !db) return;
+
+      if (selectedModalPeriods.size === 0) {
+        toast('대여할 교시를 1개 이상 선택해 주세요.', 'err');
+        return;
+      }
+
+      const teacher = document.getElementById('mTeacher').value.trim();
+      const grade = Number(document.getElementById('mGrade').value);
+      const classRaw = document.getElementById('mClassNo').value.trim();
+      const classNo = classRaw === '' ? null : Number(classRaw);
+      const pin = document.getElementById('mPin').value.trim();
+
+      if (!teacher) {
+        toast('교사 이름을 입력해 주세요.', 'err');
+        return;
+      }
+      if (!/^[0-9]{4}$/.test(pin)) {
+        toast('취소용 PIN은 숫자 4자리로 입력해 주세요.', 'err');
+        return;
+      }
+
+      // 브라우저에 선생님 정보 기억해두기 (다음 예약 편리성)
+      localStorage.setItem('gear_teacher_name', teacher);
+      localStorage.setItem('gear_grade', String(grade));
+      localStorage.setItem('gear_class', classRaw);
+      document.getElementById('myTeacherName').value = teacher;
+
+      const sortedPeriods = Array.from(selectedModalPeriods).sort((a, b) => a - b);
+      const rows = sortedPeriods.map((p) => ({
+        item_id: activeRentItem.id,
+        rent_date: selectedDate,
+        period: p,
+        teacher_name: teacher,
+        grade: grade,
+        class_no: classNo,
+        pin_code: pin
+      }));
+
+      const btn = document.getElementById('confirmRentBtn');
+      btn.disabled = true;
+      btn.textContent = '등록 중...';
+
+      try {
+        const { error } = await db.from('rentals').insert(rows);
+        if (error) {
+          if (error.code === '23505') {
+            toast('방금 다른 선생님이 먼저 예약한 교시가 포함되어 있습니다.', 'err');
+            await fetchAll();
+          } else {
+            toast(`등록 오류: ${error.message}`, 'err');
+          }
+          return;
+        }
+
+        const pText = sortedPeriods.map((p) => `${p}교시`).join(', ');
+        toast(`${activeRentItem.name} (${pText}) 대여 완료!`, 'ok');
+        closeRentModal();
+        await fetchAll();
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '선택 교시 대여 확정';
+      }
+    }
+
+    // =========================================================================
+    // 반납(취소) PIN 모달
+    // =========================================================================
+    function openReturnModal(rental, itemName) {
+      targetReturnRental = rental;
+      const cls = rental.class_no ? `${rental.grade}학년 ${rental.class_no}반` : `${rental.grade}학년`;
+      document.getElementById('returnModalDesc').textContent =
+        `${formatKoDate(rental.rent_date)} ${rental.period}교시 [${itemName}] · ${rental.teacher_name} 선생님 (${cls}) 예약을 반납 처리합니다.`;
+      const inp = document.getElementById('returnPinInput');
+      inp.value = '';
+      document.getElementById('returnModal').classList.add('open');
+      setTimeout(() => inp.focus(), 50);
+    }
+
+    function closeReturnModal() {
+      document.getElementById('returnModal').classList.remove('open');
+      targetReturnRental = null;
+    }
+
+    async function confirmReturn() {
+      if (!targetReturnRental || !db) return;
+      const pin = document.getElementById('returnPinInput').value.trim();
+      if (pin !== targetReturnRental.pin_code) {
+        toast('PIN 번호 4자리가 일치하지 않습니다.', 'err');
+        document.getElementById('returnPinInput').value = '';
+        document.getElementById('returnPinInput').focus();
+        return;
+      }
+
+      const btn = document.getElementById('doReturnBtn');
+      btn.disabled = true;
+      try {
+        const { error } = await db.from('rentals').delete().eq('id', targetReturnRental.id);
+        if (error) {
+          toast(`반납 오류: ${error.message}`, 'err');
+          return;
+        }
+        closeReturnModal();
+        toast('정상적으로 반납(취소)되었습니다.', 'ok');
+        await fetchAll();
+        if (document.getElementById('myListModal').classList.contains('open')) {
+          openMyRentalsModal();
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // =========================================================================
+    // 내 예약 전체 보기 모달
+    // =========================================================================
+    function openMyRentalsModal() {
+      const name = document.getElementById('myTeacherName').value.trim();
+      const todayISO = toISO(new Date());
+      const itemMap = new Map(items.map((i) => [i.id, i]));
+
+      const list = rentals.filter((r) => {
+        if (r.rent_date < todayISO) return false;
+        if (name && !r.teacher_name.includes(name)) return false;
+        return true;
+      });
+
+      document.getElementById('myListTitle').textContent =
+        name ? `🙋 ${name} 선생님의 예정 대여 (${list.length}건)` : `📋 전체 예정 대여 목록 (${list.length}건)`;
+
+      const body = document.getElementById('myListBody');
+      if (list.length === 0) {
+        body.innerHTML = `<p style="text-align: center; padding: 28px; color: var(--text-sub); font-size: 0.9rem;">예정된 대여 내역이 없습니다.</p>`;
+      } else {
+        body.innerHTML = '';
+        list.forEach((r) => {
+          const item = itemMap.get(r.item_id);
+          const iName = item ? item.name : '기자재';
+          const row = document.createElement('div');
+          row.className = 'my-list-item';
+          row.innerHTML = `
+            <div>
+              <div style="font-weight: 800; font-size: 0.92rem;">${esc(iName)}</div>
+              <div style="font-size: 0.8rem; color: var(--text-sub);">${formatKoDate(r.rent_date)} ${r.period}교시 · ${esc(r.teacher_name)} (${r.grade}학년${r.class_no ? ` ${r.class_no}반` : ''})</div>
+            </div>
+          `;
+          const delBtn = document.createElement('button');
+          delBtn.type = 'button';
+          delBtn.className = 'btn-danger-sm';
+          delBtn.textContent = '반납';
+          delBtn.addEventListener('click', () => openReturnModal(r, iName));
+          row.appendChild(delBtn);
+          body.appendChild(row);
+        });
+      }
+
+      document.getElementById('myListModal').classList.add('open');
+    }
+
+    // =========================================================================
+    // 통계 리포트 렌더링
+    // =========================================================================
+    function renderStats() {
+      const today = new Date();
+      let sISO = '';
+      let eISO = '';
+      let title = '';
+
+      if (statsRange === 'week') {
+        const mon = getMonday(today);
+        sISO = toISO(mon);
+        eISO = toISO(addDays(mon, 4));
+        title = `이번 주 (${sISO} ~ ${eISO})`;
+      } else if (statsRange === 'month') {
+        sISO = toISO(new Date(today.getFullYear(), today.getMonth(), 1));
+        eISO = toISO(new Date(today.getFullYear(), today.getMonth() + 1, 0));
+        title = `${today.getFullYear()}년 ${today.getMonth() + 1}월 전체`;
+      } else {
+        sISO = rentals.length ? rentals[0].rent_date : toISO(today);
+        eISO = rentals.length ? rentals[rentals.length - 1].rent_date : sISO;
+        title = '전체 누적 기간';
+      }
+
+      const subRentals = statsRange === 'all'
+        ? rentals
+        : rentals.filter((r) => r.rent_date >= sISO && r.rent_date <= eISO);
+
+      let cur = fromISO(sISO);
+      const end = fromISO(eISO);
+      let weekdays = 0;
+      while (cur <= end) {
+        if (cur.getDay() >= 1 && cur.getDay() <= 5) weekdays++;
+        cur = addDays(cur, 1);
+      }
+      weekdays = Math.max(weekdays, 1);
+      const capacity = weekdays * 6;
+
+      document.getElementById('statsRangeInfo').textContent = `${title} · 평일 ${weekdays}일 (기자재당 최대 ${capacity}교시)`;
+      document.getElementById('statTotalRentals').textContent = `${subRentals.length}교시`;
+      document.getElementById('statPeriodText').textContent = title;
+
+      const counts = new Map(items.map((i) => [i.id, 0]));
+      subRentals.forEach((r) => counts.set(r.item_id, (counts.get(r.item_id) || 0) + 1));
+
+      let topName = '-';
+      let topCnt = 0;
+      items.forEach((i) => {
+        const c = counts.get(i.id) || 0;
+        if (c > topCnt) { topCnt = c; topName = i.name; }
+      });
+      document.getElementById('statBestItem').textContent = topCnt > 0 ? topName : '-';
+      document.getElementById('statBestItemSub').textContent = topCnt > 0 ? `총 ${topCnt}교시 대여됨` : '데이터 없음';
+
+      const matrix = Array.from({ length: 5 }, () => Array(6).fill(0));
+      let peakD = 0, peakP = 0, peakMax = 0;
+      subRentals.forEach((r) => {
+        const d = fromISO(r.rent_date).getDay();
+        if (d >= 1 && d <= 5 && r.period >= 1 && r.period <= 6) {
+          matrix[d - 1][r.period - 1]++;
+          if (matrix[d - 1][r.period - 1] > peakMax) {
+            peakMax = matrix[d - 1][r.period - 1];
+            peakD = d - 1;
+            peakP = r.period - 1;
+          }
+        }
+      });
+      document.getElementById('statPeakTime').textContent = peakMax > 0 ? `${WEEKDAYS[peakD]}요일 ${peakP + 1}교시` : '-';
+      document.getElementById('statPeakTimeSub').textContent = peakMax > 0 ? `누적 ${peakMax}건 이용` : '데이터 없음';
+
+      const ctx1 = document.getElementById('chartItems').getContext('2d');
+      if (chartItemsObj) chartItemsObj.destroy();
+      chartItemsObj = new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: items.map((i) => i.name),
+          datasets: [{
+            label: '이용률 (%)',
+            data: items.map((i) => Number((((counts.get(i.id) || 0) / capacity) * 100).toFixed(1))),
+            backgroundColor: 'rgba(13, 148, 136, 0.85)',
+            borderRadius: 8
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, suggestedMax: 50, ticks: { callback: (v) => v + '%' } } }
+        }
+      });
+
+      const colors = ['#99f6e4', '#5eead4', '#2dd4bf', '#14b8a6', '#0d9488', '#0f766e'];
+      const ctx2 = document.getElementById('chartSlots').getContext('2d');
+      if (chartSlotsObj) chartSlotsObj.destroy();
+      chartSlotsObj = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: WEEKDAYS.map((w) => `${w}요일`),
+          datasets: PERIODS.map((p, idx) => ({
+            label: `${p}교시`,
+            data: WEEKDAYS.map((_, dIdx) => matrix[dIdx][idx]),
+            backgroundColor: colors[idx],
+            borderRadius: 4
+          }))
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
+          scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    // =========================================================================
+    // 이벤트 바인딩
+    // =========================================================================
+    function bindEvents() {
+      // 상단 뷰 전환
+      document.querySelectorAll('.topbar .mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.topbar .mode-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const v = btn.dataset.view;
+          document.getElementById('boardView').classList.toggle('hidden', v !== 'boardView');
+          document.getElementById('statsView').classList.toggle('hidden', v !== 'statsView');
+          if (v === 'statsView') renderStats();
+        });
+      });
+
+      // 날짜 이동
+      document.getElementById('boardDateInput').addEventListener('change', (e) => {
+        if (e.target.value) {
+          selectedDate = e.target.value;
+          updateDateHeader();
+          renderBoard();
+        }
+      });
+      document.getElementById('prevDayBtn').addEventListener('click', () => {
+        selectedDate = toISO(addDays(fromISO(selectedDate), -1));
+        updateDateHeader();
+        renderBoard();
+      });
+      document.getElementById('nextDayBtn').addEventListener('click', () => {
+        selectedDate = toISO(addDays(fromISO(selectedDate), 1));
+        updateDateHeader();
+        renderBoard();
+      });
+      document.getElementById('todayJumpBtn').addEventListener('click', () => {
+        selectedDate = toISO(new Date());
+        updateDateHeader();
+        renderBoard();
+      });
+      document.getElementById('tomorrowJumpBtn').addEventListener('click', () => {
+        selectedDate = toISO(addDays(new Date(), 1));
+        updateDateHeader();
+        renderBoard();
+      });
+      document.getElementById('nextMonJumpBtn').addEventListener('click', () => {
+        const nextMon = addDays(getMonday(new Date()), 7);
+        selectedDate = toISO(nextMon);
+        updateDateHeader();
+        renderBoard();
+      });
+
+      // 내 이름 입력 & 검색
+      document.getElementById('myTeacherName').addEventListener('input', (e) => {
+        localStorage.setItem('gear_teacher_name', e.target.value.trim());
+        document.getElementById('mTeacher').value = e.target.value;
+        renderBoard();
+      });
+      document.getElementById('gearSearchInput').addEventListener('input', renderBoard);
+      document.getElementById('openMyRentalsBtn').addEventListener('click', openMyRentalsModal);
+
+      // 대여 모달
+      document.getElementById('closeRentModal').addEventListener('click', closeRentModal);
+      document.getElementById('cancelRentBtn').addEventListener('click', closeRentModal);
+      document.getElementById('quickRentForm').addEventListener('submit', submitQuickRent);
+      document.getElementById('rentModal').addEventListener('click', (e) => {
+        if (e.target.id === 'rentModal') closeRentModal();
+      });
+
+      // 반납 모달
+      document.getElementById('closeReturnModal').addEventListener('click', closeReturnModal);
+      document.getElementById('cancelReturnBtn').addEventListener('click', closeReturnModal);
+      document.getElementById('doReturnBtn').addEventListener('click', confirmReturn);
+      document.getElementById('returnPinInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); confirmReturn(); }
+      });
+      document.getElementById('returnModal').addEventListener('click', (e) => {
+        if (e.target.id === 'returnModal') closeReturnModal();
+      });
+
+      // 내 대여 목록 모달
+      document.getElementById('closeMyListModal').addEventListener('click', () => {
+        document.getElementById('myListModal').classList.remove('open');
+      });
+      document.getElementById('myListModal').addEventListener('click', (e) => {
+        if (e.target.id === 'myListModal') document.getElementById('myListModal').classList.remove('open');
+      });
+
+      // 통계 기간 버튼
+      document.querySelectorAll('#statsView .mode-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('#statsView .mode-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          statsRange = btn.dataset.range;
+          renderStats();
+        });
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
